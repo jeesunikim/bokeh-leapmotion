@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 /* 
  * Leap Spring Controls
  * Author: @Cabbibo
