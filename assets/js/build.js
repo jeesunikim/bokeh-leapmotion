@@ -5772,314 +5772,6 @@ Pointable.Invalid = { valid: false };
 
 /***/ }),
 /* 3 */
-/***/ (function(module, exports) {
-
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-function EventEmitter() {
-  this._events = this._events || {};
-  this._maxListeners = this._maxListeners || undefined;
-}
-module.exports = EventEmitter;
-
-// Backwards-compat with node 0.10.x
-EventEmitter.EventEmitter = EventEmitter;
-
-EventEmitter.prototype._events = undefined;
-EventEmitter.prototype._maxListeners = undefined;
-
-// By default EventEmitters will print a warning if more than 10 listeners are
-// added to it. This is a useful default which helps finding memory leaks.
-EventEmitter.defaultMaxListeners = 10;
-
-// Obviously not all Emitters should be limited to 10. This function allows
-// that to be increased. Set to zero for unlimited.
-EventEmitter.prototype.setMaxListeners = function(n) {
-  if (!isNumber(n) || n < 0 || isNaN(n))
-    throw TypeError('n must be a positive number');
-  this._maxListeners = n;
-  return this;
-};
-
-EventEmitter.prototype.emit = function(type) {
-  var er, handler, len, args, i, listeners;
-
-  if (!this._events)
-    this._events = {};
-
-  // If there is no 'error' event listener then throw.
-  if (type === 'error') {
-    if (!this._events.error ||
-        (isObject(this._events.error) && !this._events.error.length)) {
-      er = arguments[1];
-      if (er instanceof Error) {
-        throw er; // Unhandled 'error' event
-      } else {
-        // At least give some kind of context to the user
-        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
-        err.context = er;
-        throw err;
-      }
-    }
-  }
-
-  handler = this._events[type];
-
-  if (isUndefined(handler))
-    return false;
-
-  if (isFunction(handler)) {
-    switch (arguments.length) {
-      // fast cases
-      case 1:
-        handler.call(this);
-        break;
-      case 2:
-        handler.call(this, arguments[1]);
-        break;
-      case 3:
-        handler.call(this, arguments[1], arguments[2]);
-        break;
-      // slower
-      default:
-        args = Array.prototype.slice.call(arguments, 1);
-        handler.apply(this, args);
-    }
-  } else if (isObject(handler)) {
-    args = Array.prototype.slice.call(arguments, 1);
-    listeners = handler.slice();
-    len = listeners.length;
-    for (i = 0; i < len; i++)
-      listeners[i].apply(this, args);
-  }
-
-  return true;
-};
-
-EventEmitter.prototype.addListener = function(type, listener) {
-  var m;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events)
-    this._events = {};
-
-  // To avoid recursion in the case that type === "newListener"! Before
-  // adding it to the listeners, first emit "newListener".
-  if (this._events.newListener)
-    this.emit('newListener', type,
-              isFunction(listener.listener) ?
-              listener.listener : listener);
-
-  if (!this._events[type])
-    // Optimize the case of one listener. Don't need the extra array object.
-    this._events[type] = listener;
-  else if (isObject(this._events[type]))
-    // If we've already got an array, just append.
-    this._events[type].push(listener);
-  else
-    // Adding the second element, need to change to array.
-    this._events[type] = [this._events[type], listener];
-
-  // Check for listener leak
-  if (isObject(this._events[type]) && !this._events[type].warned) {
-    if (!isUndefined(this._maxListeners)) {
-      m = this._maxListeners;
-    } else {
-      m = EventEmitter.defaultMaxListeners;
-    }
-
-    if (m && m > 0 && this._events[type].length > m) {
-      this._events[type].warned = true;
-      console.error('(node) warning: possible EventEmitter memory ' +
-                    'leak detected. %d listeners added. ' +
-                    'Use emitter.setMaxListeners() to increase limit.',
-                    this._events[type].length);
-      if (typeof console.trace === 'function') {
-        // not supported in IE 10
-        console.trace();
-      }
-    }
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.on = EventEmitter.prototype.addListener;
-
-EventEmitter.prototype.once = function(type, listener) {
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  var fired = false;
-
-  function g() {
-    this.removeListener(type, g);
-
-    if (!fired) {
-      fired = true;
-      listener.apply(this, arguments);
-    }
-  }
-
-  g.listener = listener;
-  this.on(type, g);
-
-  return this;
-};
-
-// emits a 'removeListener' event iff the listener was removed
-EventEmitter.prototype.removeListener = function(type, listener) {
-  var list, position, length, i;
-
-  if (!isFunction(listener))
-    throw TypeError('listener must be a function');
-
-  if (!this._events || !this._events[type])
-    return this;
-
-  list = this._events[type];
-  length = list.length;
-  position = -1;
-
-  if (list === listener ||
-      (isFunction(list.listener) && list.listener === listener)) {
-    delete this._events[type];
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-
-  } else if (isObject(list)) {
-    for (i = length; i-- > 0;) {
-      if (list[i] === listener ||
-          (list[i].listener && list[i].listener === listener)) {
-        position = i;
-        break;
-      }
-    }
-
-    if (position < 0)
-      return this;
-
-    if (list.length === 1) {
-      list.length = 0;
-      delete this._events[type];
-    } else {
-      list.splice(position, 1);
-    }
-
-    if (this._events.removeListener)
-      this.emit('removeListener', type, listener);
-  }
-
-  return this;
-};
-
-EventEmitter.prototype.removeAllListeners = function(type) {
-  var key, listeners;
-
-  if (!this._events)
-    return this;
-
-  // not listening for removeListener, no need to emit
-  if (!this._events.removeListener) {
-    if (arguments.length === 0)
-      this._events = {};
-    else if (this._events[type])
-      delete this._events[type];
-    return this;
-  }
-
-  // emit removeListener for all listeners on all events
-  if (arguments.length === 0) {
-    for (key in this._events) {
-      if (key === 'removeListener') continue;
-      this.removeAllListeners(key);
-    }
-    this.removeAllListeners('removeListener');
-    this._events = {};
-    return this;
-  }
-
-  listeners = this._events[type];
-
-  if (isFunction(listeners)) {
-    this.removeListener(type, listeners);
-  } else if (listeners) {
-    // LIFO order
-    while (listeners.length)
-      this.removeListener(type, listeners[listeners.length - 1]);
-  }
-  delete this._events[type];
-
-  return this;
-};
-
-EventEmitter.prototype.listeners = function(type) {
-  var ret;
-  if (!this._events || !this._events[type])
-    ret = [];
-  else if (isFunction(this._events[type]))
-    ret = [this._events[type]];
-  else
-    ret = this._events[type].slice();
-  return ret;
-};
-
-EventEmitter.prototype.listenerCount = function(type) {
-  if (this._events) {
-    var evlistener = this._events[type];
-
-    if (isFunction(evlistener))
-      return 1;
-    else if (evlistener)
-      return evlistener.length;
-  }
-  return 0;
-};
-
-EventEmitter.listenerCount = function(emitter, type) {
-  return emitter.listenerCount(type);
-};
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-
-
-/***/ }),
-/* 4 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -50317,6 +50009,314 @@ function CanvasRenderer() {
 
 
 /***/ }),
+/* 4 */
+/***/ (function(module, exports) {
+
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+function EventEmitter() {
+  this._events = this._events || {};
+  this._maxListeners = this._maxListeners || undefined;
+}
+module.exports = EventEmitter;
+
+// Backwards-compat with node 0.10.x
+EventEmitter.EventEmitter = EventEmitter;
+
+EventEmitter.prototype._events = undefined;
+EventEmitter.prototype._maxListeners = undefined;
+
+// By default EventEmitters will print a warning if more than 10 listeners are
+// added to it. This is a useful default which helps finding memory leaks.
+EventEmitter.defaultMaxListeners = 10;
+
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!isNumber(n) || n < 0 || isNaN(n))
+    throw TypeError('n must be a positive number');
+  this._maxListeners = n;
+  return this;
+};
+
+EventEmitter.prototype.emit = function(type) {
+  var er, handler, len, args, i, listeners;
+
+  if (!this._events)
+    this._events = {};
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events.error ||
+        (isObject(this._events.error) && !this._events.error.length)) {
+      er = arguments[1];
+      if (er instanceof Error) {
+        throw er; // Unhandled 'error' event
+      } else {
+        // At least give some kind of context to the user
+        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
+        err.context = er;
+        throw err;
+      }
+    }
+  }
+
+  handler = this._events[type];
+
+  if (isUndefined(handler))
+    return false;
+
+  if (isFunction(handler)) {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+  } else if (isObject(handler)) {
+    args = Array.prototype.slice.call(arguments, 1);
+    listeners = handler.slice();
+    len = listeners.length;
+    for (i = 0; i < len; i++)
+      listeners[i].apply(this, args);
+  }
+
+  return true;
+};
+
+EventEmitter.prototype.addListener = function(type, listener) {
+  var m;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events)
+    this._events = {};
+
+  // To avoid recursion in the case that type === "newListener"! Before
+  // adding it to the listeners, first emit "newListener".
+  if (this._events.newListener)
+    this.emit('newListener', type,
+              isFunction(listener.listener) ?
+              listener.listener : listener);
+
+  if (!this._events[type])
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  else if (isObject(this._events[type]))
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  else
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+
+  // Check for listener leak
+  if (isObject(this._events[type]) && !this._events[type].warned) {
+    if (!isUndefined(this._maxListeners)) {
+      m = this._maxListeners;
+    } else {
+      m = EventEmitter.defaultMaxListeners;
+    }
+
+    if (m && m > 0 && this._events[type].length > m) {
+      this._events[type].warned = true;
+      console.error('(node) warning: possible EventEmitter memory ' +
+                    'leak detected. %d listeners added. ' +
+                    'Use emitter.setMaxListeners() to increase limit.',
+                    this._events[type].length);
+      if (typeof console.trace === 'function') {
+        // not supported in IE 10
+        console.trace();
+      }
+    }
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  var fired = false;
+
+  function g() {
+    this.removeListener(type, g);
+
+    if (!fired) {
+      fired = true;
+      listener.apply(this, arguments);
+    }
+  }
+
+  g.listener = listener;
+  this.on(type, g);
+
+  return this;
+};
+
+// emits a 'removeListener' event iff the listener was removed
+EventEmitter.prototype.removeListener = function(type, listener) {
+  var list, position, length, i;
+
+  if (!isFunction(listener))
+    throw TypeError('listener must be a function');
+
+  if (!this._events || !this._events[type])
+    return this;
+
+  list = this._events[type];
+  length = list.length;
+  position = -1;
+
+  if (list === listener ||
+      (isFunction(list.listener) && list.listener === listener)) {
+    delete this._events[type];
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+
+  } else if (isObject(list)) {
+    for (i = length; i-- > 0;) {
+      if (list[i] === listener ||
+          (list[i].listener && list[i].listener === listener)) {
+        position = i;
+        break;
+      }
+    }
+
+    if (position < 0)
+      return this;
+
+    if (list.length === 1) {
+      list.length = 0;
+      delete this._events[type];
+    } else {
+      list.splice(position, 1);
+    }
+
+    if (this._events.removeListener)
+      this.emit('removeListener', type, listener);
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  var key, listeners;
+
+  if (!this._events)
+    return this;
+
+  // not listening for removeListener, no need to emit
+  if (!this._events.removeListener) {
+    if (arguments.length === 0)
+      this._events = {};
+    else if (this._events[type])
+      delete this._events[type];
+    return this;
+  }
+
+  // emit removeListener for all listeners on all events
+  if (arguments.length === 0) {
+    for (key in this._events) {
+      if (key === 'removeListener') continue;
+      this.removeAllListeners(key);
+    }
+    this.removeAllListeners('removeListener');
+    this._events = {};
+    return this;
+  }
+
+  listeners = this._events[type];
+
+  if (isFunction(listeners)) {
+    this.removeListener(type, listeners);
+  } else if (listeners) {
+    // LIFO order
+    while (listeners.length)
+      this.removeListener(type, listeners[listeners.length - 1]);
+  }
+  delete this._events[type];
+
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  var ret;
+  if (!this._events || !this._events[type])
+    ret = [];
+  else if (isFunction(this._events[type]))
+    ret = [this._events[type]];
+  else
+    ret = this._events[type].slice();
+  return ret;
+};
+
+EventEmitter.prototype.listenerCount = function(type) {
+  if (this._events) {
+    var evlistener = this._events[type];
+
+    if (isFunction(evlistener))
+      return 1;
+    else if (evlistener)
+      return evlistener.length;
+  }
+  return 0;
+};
+
+EventEmitter.listenerCount = function(emitter, type) {
+  return emitter.listenerCount(type);
+};
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+
+
+/***/ }),
 /* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -51484,7 +51484,7 @@ Frame.Invalid = {
 
 var glMatrix = __webpack_require__(1)
   , vec3 = glMatrix.vec3
-  , EventEmitter = __webpack_require__(3).EventEmitter
+  , EventEmitter = __webpack_require__(4).EventEmitter
   , _ = __webpack_require__(0);
 
 /**
@@ -52652,7 +52652,7 @@ CircularBuffer.prototype.push = function(o) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var chooseProtocol = __webpack_require__(15).chooseProtocol
-  , EventEmitter = __webpack_require__(3).EventEmitter
+  , EventEmitter = __webpack_require__(4).EventEmitter
   , _ = __webpack_require__(0);
 
 var BaseConnection = module.exports = function(opts) {
@@ -52828,7 +52828,7 @@ var Frame = __webpack_require__(7)
   , Pointable = __webpack_require__(2)
   , Finger = __webpack_require__(6)
   , _ = __webpack_require__(0)
-  , EventEmitter = __webpack_require__(3).EventEmitter;
+  , EventEmitter = __webpack_require__(4).EventEmitter;
 
 var Event = function(data) {
   this.type = data.type;
@@ -52923,9 +52923,7 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 "use strict";
 
 
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _three = __webpack_require__(4);
+var _three = __webpack_require__(3);
 
 var THREE = _interopRequireWildcard(_three);
 
@@ -52933,283 +52931,352 @@ var _leapjs = __webpack_require__(22);
 
 var Leap = _interopRequireWildcard(_leapjs);
 
+var _plane = __webpack_require__(33);
+
+var _plane2 = _interopRequireDefault(_plane);
+
+var _sphere = __webpack_require__(34);
+
+var _sphere2 = _interopRequireDefault(_sphere);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var baseBoneRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
 
 var scene = void 0,
     camera = void 0,
     renderer = void 0,
-
-// LeapControls,
-// CameraControls,
-controller = void 0;
+    controller = void 0;
 
 var armMeshes = [],
     boneMeshes = [];
 
 var planeGeometry = void 0,
-    newPlane = void 0;
+    newPlane = void 0,
+    newSphere = void 0;
 
 function init() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
+   scene = new THREE.Scene();
+   scene.background = new THREE.Color(0x000000);
 
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.x = -30;
-  camera.position.y = 100;
-  camera.position.z = 500;
-  camera.lookAt(scene.position);
+   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-  renderer = new THREE.WebGLRenderer();
-  renderer.setClearColor(0xEEEEEE, 1.0);
-  renderer.shadowMap.enabled = true;
-  renderer.setSize(window.innerWidth, window.innerHeight);
+   // camera.position.x = -30;
+   camera.position.y = 200;
+   camera.position.z = 400;
+   camera.lookAt(scene.position);
 
-  helpers();
-  lights();
-  drawNewPlane();
+   renderer = new THREE.WebGLRenderer();
+   renderer.setClearColor(0xEEEEEE, 1.0);
+   renderer.shadowMap.enabled = true;
+   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  // All Leap Motion related functions
-  Leap.loop({ background: true }, leapAnimate).connect();
+   helpers();
+   lights();
+   // drawNewPlane(600, 400);
+   // drawNewSphere(60, 32 ,32);
+   initLeap();
 
-  controller = new Leap.Controller();
+   var geometry = new THREE.BoxGeometry(300, 20, 300);
+   var material = new THREE.MeshNormalMaterial();
+   var mesh = new THREE.Mesh(geometry, material);
+   mesh.position.set(0, -10, 0);
+   scene.add(mesh);
 
-  var geometry = new THREE.BoxGeometry(300, 20, 300);
-  var material = new THREE.MeshNormalMaterial();
-  var mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(0, -10, 0);
-  scene.add(mesh);
+   renderer.render(scene, camera);
+   document.getElementById("leap-canvas").appendChild(renderer.domElement);
+   window.addEventListener('resize', onResize, false);
+}
 
-  renderer.render(scene, camera);
-  document.body.appendChild(renderer.domElement);
-  window.addEventListener('resize', onResize, false);
+function initLeap() {
+   Leap.loop({ enableGestures: true }, function (frame, leapPosition) {
+      leapToScene(frame);
+      leapAnimate(frame);
+   }).connect();
+   controller = new Leap.Controller();
 }
 
 function onResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+   camera.aspect = window.innerWidth / window.innerHeight;
+   camera.updateProjectionMatrix();
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
+   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function helpers() {
-  var axes = new THREE.AxisHelper(20);
-  var gridHelper = new THREE.GridHelper(150, 10);
-  var axisHelper = new THREE.AxisHelper(150);
-  scene.add(axes);
-  scene.add(gridHelper);
-  scene.add(axisHelper);
+   var axes = new THREE.AxisHelper(20);
+   var gridHelper = new THREE.GridHelper(150, 10);
+   var axisHelper = new THREE.AxisHelper(150);
+   scene.add(axes);
+   scene.add(gridHelper);
+   scene.add(axisHelper);
 }
 
 function lights() {
-  var ambientLight = new THREE.AmbientLight(0x0c0c0c);
-  var spotLight = new THREE.SpotLight(0xffffff);
-  spotLight.position.set(-40, 60, -10);
-  spotLight.castShadow = true;
-  scene.add(ambientLight);
-  scene.add(spotLight);
+   var ambientLight = new THREE.AmbientLight(0x0c0c0c);
+   var spotLight = new THREE.SpotLight(0xffffff);
+   spotLight.position.set(-40, 60, -10);
+   spotLight.castShadow = true;
+   scene.add(ambientLight);
+   scene.add(spotLight);
 }
 
 function addMesh(meshes) {
-  var geometry = new THREE.BoxGeometry(1, 1, 1);
-  var material = new THREE.MeshNormalMaterial();
-  var mesh = new THREE.Mesh(geometry, material);
-  meshes.push(mesh);
-  return mesh;
+   var geometry = new THREE.BoxGeometry(1, 1, 1);
+   var material = new THREE.MeshNormalMaterial();
+   var mesh = new THREE.Mesh(geometry, material);
+   meshes.push(mesh);
+   return mesh;
 }
 
 function updateMesh(bone, mesh) {
-  mesh.position.fromArray(bone.center());
-  mesh.setRotationFromMatrix(new THREE.Matrix4().fromArray(bone.matrix()));
-  // Without this, hand is a bunch of square
-  mesh.quaternion.multiply(baseBoneRotation);
-  mesh.scale.set(bone.width, bone.width, bone.length);
-  scene.add(mesh);
+   var baseBoneRotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2));
+   mesh.position.fromArray(bone.center());
+
+   // Without this, hand is a bunch of square
+   mesh.setRotationFromMatrix(new THREE.Matrix4().fromArray(bone.matrix()));
+   mesh.quaternion.multiply(baseBoneRotation);
+   mesh.scale.set(bone.width, bone.width, bone.length);
+   scene.add(mesh);
+}
+
+function leapToScene(frame) {
+   var coordinateString = "",
+       canvasElement = document.getElementById("leap-canvas").getElementsByTagName("canvas")[0];
+
+   var x = void 0,
+       y = void 0,
+       z = void 0;
+
+   if (frame.pointables.length > 0) {
+      canvasElement.width = canvasElement.width; //clear
+
+      // Get a pointable and normalize the tip position
+      // https://community.leapmotion.com/t/translate-leap-coordinates-to-use-for-threejs/607/7
+      var pointable = frame.pointables[0];
+      var iBox = frame.interactionBox;
+      var normalizedPosition = iBox.normalizePoint(pointable.tipPosition, true);
+
+      x = normalizedPosition[0] / iBox.size[0];
+      y = normalizedPosition[1] / iBox.size[1];
+      z = normalizedPosition[2] / iBox.size[2];
+
+      // x /= iBox.size[0];
+      // y /= iBox.size[1];
+      // z /= iBox.size[2];
+
+      // x *= canvasElement.width;
+      // y *= canvasElement.height;
+      // z *= depth;
+
+      // Convert the normalized coordinates to span the canvas
+
+      var canvasX = canvasElement.width * normalizedPosition[0];
+      var canvasY = canvasElement.height * (1 - normalizedPosition[1]);
+
+      coordinateString = concatData("canvasX", canvasX);
+      coordinateString += "<br/>";
+      coordinateString += concatData("canvasY", canvasY);
+      coordinateString += "<br/>";
+      coordinateString = concatData("normalizedPosition[0]/iBox.size[0]", x);
+      coordinateString += "<br/>";
+      coordinateString += concatData("normalizedPosition[1]/iBox.size[1]", y);
+      coordinateString += "<br/>";
+      coordinateString += concatData("normalizedPosition[2]/iBox.size[2]", z);
+      coordinateString += "<br/>";
+      coordinateString += concatData("iBox", iBox);
+      coordinateString += concatData("iBox.depth", iBox.depth);
+      coordinateString += concatData("normalizedPosition", normalizedPosition);
+      coordinateString += concatData("iBox.size", iBox.size[0]);
+
+      // iBox: InteractionBox [ width:235.247 | height:235.247 | depth:147.751 ]
+
+      output.innerHTML = coordinateString;
+   }
 }
 
 function leapAnimate(frame) {
-  var countBones = 0;
-  var countArms = 0;
 
-  armMeshes.forEach(function (item) {
-    scene.remove(item);
-  });
-  boneMeshes.forEach(function (item) {
-    scene.remove(item);
-  });
+   var frameString = "",
+       handString = "",
+       fingerString = "",
+       gestureString = "";
 
-  var _iteratorNormalCompletion = true;
-  var _didIteratorError = false;
-  var _iteratorError = undefined;
+   var hands = frame.hands.length;
 
-  try {
-    for (var _iterator = frame.hands[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-      var hand = _step.value;
-      var _iteratorNormalCompletion2 = true;
-      var _didIteratorError2 = false;
-      var _iteratorError2 = undefined;
+   var circleRadius = void 0;
 
-      try {
-        for (var _iterator2 = hand.fingers[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-          var finger = _step2.value;
-          var _iteratorNormalCompletion3 = true;
-          var _didIteratorError3 = false;
-          var _iteratorError3 = undefined;
+   if (frame.pointables.length > 0) {
+      var pointable = frame.pointables;
 
-          try {
-            for (var _iterator3 = finger.bones[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-              var bone = _step3.value;
+      frameString = concatData("pointable", pointable);
+   }
 
-              if (countBones++ === 0) {
-                continue;
-              }
-              var boneMesh = boneMeshes[countBones] || addMesh(boneMeshes);
-              updateMesh(bone, boneMesh);
+   for (var i = 0; i < hands; i++) {
+      var _hand = frame.hands[i];
+
+      handString += concatData("hand.type", _hand.type);
+      handString += "<br/>";
+
+      if (_hand.type == "right") {
+         for (var f = 0; f < frame.fingers.length; f++) {
+            var finger = frame.fingers[f];
+            // fingerString += concatData("finger ", finger);
+         }
+      }
+
+      frameString += handString;
+      frameString += fingerString;
+   }
+
+   for (var g = 0; g < frame.gestures.length; g++) {
+      if (frame.valid && frame.gestures.length > 0) {
+         (function () {
+            var executed = false;
+            frame.gestures.forEach(function (gesture) {
+               if (gesture.type === "circle") {
+
+                  // gestureString += concatData("gesture ", gesture.type);
+                  // frameString += gestureString;
+                  circleRadius = gesture.radius;
+                  if (circleRadius && !executed) {
+                     executed = true;
+                     console.log('circle is there');
+                     drawNewSphere(circleRadius, 32, 32);
+                     // console.log(circleRadius, ' circleRadius')
+                  }
+               }
+               // switch (gesture.type){
+               //    case "circle":
+               //    console.log("Circle Gesture");
+               //    break;
+               // case "keyTap":
+               // console.log("Key Tap Gesture");
+               // break;
+               // case "screenTap":
+               // console.log("Screen Tap Gesture");
+               // break;
+               // case "swipe":
+               // console.log("Swipe Gesture");
+               // break;
+               // }
+            });
+         })();
+      }
+   };
+
+   // output.innerHTML = frameString;
+
+   var countBones = 0,
+       countArms = 0;
+
+   armMeshes.forEach(function (item) {
+      scene.remove(item);
+   });
+   boneMeshes.forEach(function (item) {
+      scene.remove(item);
+   });
+
+   var _iteratorNormalCompletion = true;
+   var _didIteratorError = false;
+   var _iteratorError = undefined;
+
+   try {
+      for (var _iterator = frame.hands[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+         var hand = _step.value;
+         var _iteratorNormalCompletion2 = true;
+         var _didIteratorError2 = false;
+         var _iteratorError2 = undefined;
+
+         try {
+            for (var _iterator2 = hand.fingers[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+               var finger = _step2.value;
+               var _iteratorNormalCompletion3 = true;
+               var _didIteratorError3 = false;
+               var _iteratorError3 = undefined;
+
+               try {
+                  for (var _iterator3 = finger.bones[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                     var bone = _step3.value;
+
+                     if (countBones++ === 0) {
+                        continue;
+                     }
+                     var boneMesh = boneMeshes[countBones] || addMesh(boneMeshes);
+                     updateMesh(bone, boneMesh);
+                  }
+               } catch (err) {
+                  _didIteratorError3 = true;
+                  _iteratorError3 = err;
+               } finally {
+                  try {
+                     if (!_iteratorNormalCompletion3 && _iterator3.return) {
+                        _iterator3.return();
+                     }
+                  } finally {
+                     if (_didIteratorError3) {
+                        throw _iteratorError3;
+                     }
+                  }
+               }
             }
-          } catch (err) {
-            _didIteratorError3 = true;
-            _iteratorError3 = err;
-          } finally {
+         } catch (err) {
+            _didIteratorError2 = true;
+            _iteratorError2 = err;
+         } finally {
             try {
-              if (!_iteratorNormalCompletion3 && _iterator3.return) {
-                _iterator3.return();
-              }
+               if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                  _iterator2.return();
+               }
             } finally {
-              if (_didIteratorError3) {
-                throw _iteratorError3;
-              }
+               if (_didIteratorError2) {
+                  throw _iteratorError2;
+               }
             }
-          }
-        }
-      } catch (err) {
-        _didIteratorError2 = true;
-        _iteratorError2 = err;
+         }
+
+         var arm = hand.arm,
+             armMesh = armMeshes[countArms++] || addMesh(armMeshes);
+
+         updateMesh(arm, armMesh);
+         armMesh.scale.set(arm.width / 4, arm.width / 2, arm.length);
+      }
+   } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+   } finally {
+      try {
+         if (!_iteratorNormalCompletion && _iterator.return) {
+            _iterator.return();
+         }
       } finally {
-        try {
-          if (!_iteratorNormalCompletion2 && _iterator2.return) {
-            _iterator2.return();
-          }
-        } finally {
-          if (_didIteratorError2) {
-            throw _iteratorError2;
-          }
-        }
+         if (_didIteratorError) {
+            throw _iteratorError;
+         }
       }
+   }
 
-      var arm = hand.arm;
-      var armMesh = armMeshes[countArms++] || addMesh(armMeshes);
-      updateMesh(arm, armMesh);
-      armMesh.scale.set(arm.width / 4, arm.width / 2, arm.length);
-    }
-  } catch (err) {
-    _didIteratorError = true;
-    _iteratorError = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion && _iterator.return) {
-        _iterator.return();
-      }
-    } finally {
-      if (_didIteratorError) {
-        throw _iteratorError;
-      }
-    }
-  }
-
-  renderer.render(scene, camera);
+   renderer.render(scene, camera);
 }
 
-function drawNewPlane() {
-  newPlane = new Plane();
-  scene.add(newPlane.plane);
+function drawNewPlane(width, height) {
+   newPlane = new _plane2.default(width, height);
+   scene.add(newPlane.plane);
 }
 
-var Plane = function () {
-  function Plane() {
-    _classCallCheck(this, Plane);
-
-    this.planeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    this.drawPlane();
-  }
-
-  _createClass(Plane, [{
-    key: 'drawPlane',
-    value: function drawPlane() {
-      planeGeometry = new THREE.PlaneGeometry(60, 40, 1, 1);
-      this.plane = new THREE.Mesh(planeGeometry, this.planeMaterial);
-      this.plane.rotation.x = -0.5 * Math.PI;
-      this.plane.position.x = 0;
-      this.plane.position.y = 0;
-      this.plane.position.z = 0;
-    }
-  }]);
-
-  return Plane;
-}();
-
-// const controls = new function() {
-//   this.rotationSpeed = 0.02;
-
-//   this.addCube = function () {
-//     const cubeSize = Math.ceil((Math.random() * 3));
-//     const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-//     const cubeMaterial = new THREE.MeshLambertMaterial({color: Math.random() * 0xffffff});
-
-//     const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-//     cube.castShadow = true;
-//     cube.name = "cube-" + (scene.children.length - 3);
-//     cube.position.x = -30 + Math.round(Math.random() * planeGeometry.parameters.width);
-//     cube.position.y = Math.round(Math.random() * 5);
-//     cube.position.z = -20 + Math.round(Math.random() * planeGeometry.parameters.height);
-
-//     scene.add(cube);
-//     this.numberOfObjects = scene.children.length;
-//     console.log('meow', this.numberOfObjects, ' this.numberOfObjects');
-//     console.log(cube, ' cube');
-//   }
-
-//   this.removeCube = function() {
-//     const allChildren = scene.children;
-//     console.log(allChildren, ' allChildren');
-//     const lastCube = allChildren[allChildren.length-1];
-//     if(lastCube instanceof THREE.Mesh && lastCube != newPlane.plane) {
-//       scene.remove(lastCube);
-//       this.numberOfObjects = scene.children.length;
-//     }
-//   }
-
-//   this.outputObjects = function() {
-//     console.log(scene.children);
-//   }
-
-//   this.getAnObject = function() {
-//     scene.getObjectByName('cube-3').scale.x = 5;
-//   }
-// }
+function drawNewSphere(radius, width, height) {
+   newSphere = new _sphere2.default(radius, width, height);
+   scene.add(newSphere.sphere);
+}
 
 function render() {
-  scene.traverse(function (e) {
-    if (e instanceof THREE.Mesh && e != newPlane.plane) {
-      // if it's THREE.Mesh and is not plane, rotate them
-      // e.rotation.x += controls.rotationSpeed;
-      // e.rotation.y += controls.rotationSpeed;
-      // e.rotation.z += controls.rotationSpeed;
-    }
-  });
-
-  requestAnimationFrame(render);
-  renderer.render(scene, camera);
+   requestAnimationFrame(render);
+   renderer.render(scene, camera);
 }
 
-// const gui = new dat.GUI();
-// gui.add(controls, 'addCube');
-// gui.add(controls, 'removeCube');
-// gui.add(controls, 'rotationSpeed', 0, 0.5);
-// gui.add(controls, 'outputObjects');
-// gui.add(controls, 'getAnObject');
+function concatData(id, data) {
+   return id + ": " + data + "<br>";
+}
 
 init();
 render();
@@ -53245,7 +53312,7 @@ module.exports = {
    *
    */
   _: __webpack_require__(0),
-  EventEmitter: __webpack_require__(3).EventEmitter,
+  EventEmitter: __webpack_require__(4).EventEmitter,
 
   /**
    * The Leap.loop() function passes a frame of Leap data to your
@@ -53315,7 +53382,7 @@ module.exports = {
   , Finger = __webpack_require__(6)
   , CircularBuffer = __webpack_require__(13)
   , Pipeline = __webpack_require__(24)
-  , EventEmitter = __webpack_require__(3).EventEmitter
+  , EventEmitter = __webpack_require__(4).EventEmitter
   , gestureListener = __webpack_require__(8).gestureListener
   , Dialog = __webpack_require__(12)
   , _ = __webpack_require__(0);
@@ -54297,7 +54364,7 @@ exports.UI = {
 /* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var EventEmitter = __webpack_require__(3).EventEmitter
+var EventEmitter = __webpack_require__(4).EventEmitter
   , _ = __webpack_require__(0)
 
 var Region = module.exports = function(start, end) {
@@ -54411,6 +54478,109 @@ module.exports = {
   minor: 6,
   dot: 4
 }
+
+/***/ }),
+/* 33 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+   value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _three = __webpack_require__(3);
+
+var THREE = _interopRequireWildcard(_three);
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Plane = function () {
+   function Plane(width, height) {
+      _classCallCheck(this, Plane);
+
+      this.planeGeometry;
+      this.planeMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      this.drawPlane(width, height);
+   }
+
+   _createClass(Plane, [{
+      key: 'drawPlane',
+      value: function drawPlane(width, height) {
+         this.planeGeometry = new THREE.PlaneGeometry(width, height, 1, 1);
+
+         console.log(this.planeGeometry.parameters.width, ' this.planeGeometry.parameters.width');
+         console.log(this.planeGeometry.parameters.height, ' this.planeGeometry.parameters.height');
+
+         this.plane = new THREE.Mesh(this.planeGeometry, this.planeMaterial);
+         this.plane.rotation.x = -0.5 * Math.PI;
+         this.plane.position.x = 0;
+         this.plane.position.y = 0;
+         this.plane.position.z = 0;
+      }
+   }]);
+
+   return Plane;
+}();
+
+exports.default = Plane;
+
+/***/ }),
+/* 34 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+   value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _three = __webpack_require__(3);
+
+var THREE = _interopRequireWildcard(_three);
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Sphere = function () {
+   function Sphere(radius, width, height) {
+      _classCallCheck(this, Sphere);
+
+      this.sphereGeometry;
+      this.sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      this.drawSphere(radius, width, height);
+   }
+
+   _createClass(Sphere, [{
+      key: 'drawSphere',
+      value: function drawSphere(radius, width, height) {
+         this.sphereGeometry = new THREE.SphereGeometry(radius, width, height);
+
+         this.sphere = new THREE.Mesh(this.sphereGeometry, this.sphereMaterial);
+         this.sphere.castShadow = true;
+         this.sphere.position.x = 100;
+         this.sphere.position.y = 100;
+         this.sphere.position.z = 0;
+         // this.plane.rotation.x = -0.5 * Math.PI;
+         // this.plane.position.x = 0;
+         // this.plane.position.y = 0;
+         // this.plane.position.z = 0;
+      }
+   }]);
+
+   return Sphere;
+}();
+
+exports.default = Sphere;
 
 /***/ })
 /******/ ]);

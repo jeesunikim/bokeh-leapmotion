@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 	<html lang="en">
 	<head>
-		<title>Leap Motion</title>
+		<title>Art Show</title>
 		<style>
 			body {
 				background-color: #000000;
@@ -10,10 +10,10 @@
 		</style>
 	</head>
 	<body>
-		<h1>Art Show</h1>
-
-		<div id="output"></div>
-
+		<div style="position: absolute; top: 0;" id="output"></div>
+		<div id="leap-canvas"></div>
+		
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.5/dat.gui.js"></script>
 		<script src="assets/js/vendor.js"></script>
 		<script src="assets/js/build.js"></script>
 	</body>
