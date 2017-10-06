@@ -93,7 +93,7 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 "use strict";
 
 
-var _three = __webpack_require__(4);
+var _three = __webpack_require__(3);
 
 var THREE = _interopRequireWildcard(_three);
 
@@ -406,7 +406,7 @@ THREE.LeapCameraControls = function (camera) {
 "use strict";
 
 
-var _three = __webpack_require__(4);
+var _three = __webpack_require__(3);
 
 var THREE = _interopRequireWildcard(_three);
 
@@ -717,7 +717,7 @@ THREE.LeapObjectControls = function (camera, object) {
 "use strict";
 
 
-var _three = __webpack_require__(4);
+var _three = __webpack_require__(3);
 
 var THREE = _interopRequireWildcard(_three);
 
@@ -930,7 +930,7 @@ THREE.LeapSpringControls = function (object, controller, scene, domElement) {
 
 /***/ }),
 
-/***/ 4:
+/***/ 3:
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
