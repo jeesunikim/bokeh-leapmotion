@@ -14,13 +14,14 @@ let
    boneMeshes = [];
 
 let 
+   planet,
    planeGeometry,
    newPlane,
    newSphere;
 
 function init() {
    scene = new THREE.Scene();
-   scene.background = new THREE.Color( 0x000000 );
+   // scene.background = new THREE.Color( 0x000000 );
 
    camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
 
@@ -29,22 +30,46 @@ function init() {
    camera.position.z = 400;
    camera.lookAt(scene.position);
 
-   renderer = new THREE.WebGLRenderer();
-   renderer.setClearColor(0xEEEEEE, 1.0);
+   renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true
+   });
+
    renderer.shadowMap.enabled = true;
    renderer.setSize(window.innerWidth, window.innerHeight);
+
+   planet = new THREE.Object3D();
+   scene.add(planet);
+   planet.position.y = -400;
+
+   var geom = new THREE.IcosahedronGeometry(15, 2);
+   var mat = new THREE.MeshPhongMaterial({
+      color: 0xBD9779,
+      shading: THREE.FlatShading
+   });
+
+  var mesh = new THREE.Mesh(geom, mat);
+  mesh.scale.x = mesh.scale.y = mesh.scale.z = 18;
+  planet.add(mesh);
+
+  var ambientLight = new THREE.AmbientLight(0xBD9779);
+  scene.add(ambientLight);
+
+  var directionalLight = new THREE.DirectionalLight(0xffffff);
+  directionalLight.position.set(0, 0, 0).normalize();
+  scene.add(directionalLight);
 
    helpers();
    lights();
    // drawNewPlane(600, 400);
-   // drawNewSphere(60, 32 ,32);
+   // drawNewSphere(100, 80 ,80, 30, 50);
    initLeap();
 
-   var geometry = new THREE.BoxGeometry( 300, 20, 300 );
-   var material = new THREE.MeshNormalMaterial();
-   var mesh = new THREE.Mesh( geometry, material );
-   mesh.position.set( 0, -10, 0 );
-   scene.add( mesh );
+   // var geometry = new THREE.BoxGeometry( 300, 20, 300 );
+   // var material = new THREE.MeshNormalMaterial();
+   // var mesh = new THREE.Mesh( geometry, material );
+   // mesh.position.set( 0, -10, 0 );
+   // scene.add( mesh );
 
    renderer.render(scene, camera);
    document.getElementById("leap-canvas").appendChild(renderer.domElement);
@@ -57,6 +82,18 @@ function initLeap() {
       leapAnimate(frame);
    }).connect(); 
    controller = new Leap.Controller();
+}
+
+function animate() {
+   requestAnimationFrame(animate);
+
+   planet.rotation.z += .001;
+   planet.rotation.y = 0;
+   planet.rotation.x = 0;
+   renderer.clear();
+
+   renderer.render(scene, camera);
+
 }
 
 function onResize(){
@@ -126,32 +163,17 @@ function leapToScene(frame) {
       y = normalizedPosition[1]/iBox.size[1];
       z = normalizedPosition[2]/iBox.size[2];
 
-      // x /= iBox.size[0];
-      // y /= iBox.size[1];
-      // z /= iBox.size[2];
-
-      // x *= canvasElement.width;
-      // y *= canvasElement.height;
-      // z *= depth;
-        
-      // Convert the normalized coordinates to span the canvas
-
       var canvasX = canvasElement.width * normalizedPosition[0];
       var canvasY = canvasElement.height * (1 - normalizedPosition[1]);
       
-      coordinateString = concatData("canvasX", canvasX);
-      coordinateString += "<br/>";
-      coordinateString += concatData("canvasY", canvasY);
-      coordinateString += "<br/>";
-      coordinateString = concatData("normalizedPosition[0]/iBox.size[0]", x);
-      coordinateString += "<br/>";
-      coordinateString += concatData("normalizedPosition[1]/iBox.size[1]", y);
-      coordinateString += "<br/>";
-      coordinateString += concatData("normalizedPosition[2]/iBox.size[2]", z);
-      coordinateString += "<br/>";
+      coordinateString = concatData("normalizedPosition", normalizedPosition);
+      // coordinateString += "<br/>";
+      // coordinateString += concatData("normalizedPosition[1]/iBox.size[1]", y);
+      // coordinateString += "<br/>";
+      // coordinateString += concatData("normalizedPosition[2]/iBox.size[2]", z);
+      // coordinateString += "<br/>";
       coordinateString += concatData("iBox", iBox);
       coordinateString += concatData("iBox.depth", iBox.depth);
-      coordinateString += concatData("normalizedPosition", normalizedPosition);
       coordinateString += concatData("iBox.size", iBox.size[0]);
 
       // iBox: InteractionBox [ width:235.247 | height:235.247 | depth:147.751 ]
@@ -202,34 +224,28 @@ function leapAnimate(frame) {
    for(var g = 0; g < frame.gestures.length; g++){
       if(frame.valid && frame.gestures.length > 0){
          let executed = false;
-         frame.gestures.forEach(function(gesture){
-            if(gesture.type === "circle") {
+         if(frame.pointables.length > 0) {
+            frame.gestures.forEach(function(gesture){
+               var gestureState = gesture.state;
+               console.log(gestureState, ' gestureState');
                
-               // gestureString += concatData("gesture ", gesture.type);
-               // frameString += gestureString;
-               circleRadius= gesture.radius;
-               if(circleRadius && !executed) {
-                  executed = true;
-                  console.log('circle is there');
-                  drawNewSphere(circleRadius, 32 ,32);
-                  // console.log(circleRadius, ' circleRadius')
+               if(gesture.type === "circle" && gestureState == "stop") {
+
+                  var pointable = frame.pointables[0];
+                  var stabilizedPosition = pointable.stabilizedTipPosition;
+
+                  console.log(stabilizedPosition, ' stabilizedPosition');
+                  
+                  circleRadius= gesture.radius;
+                  if(circleRadius && !executed) {
+                     executed = true;
+                     console.log('circle is there');
+                     drawNewSphere(circleRadius, 32 ,32, frame.pointables[0].carpPosition[0], frame.pointables[0].carpPosition[1]);
+                     // console.log(circleRadius, ' circleRadius')
+                  }
                }
-            }
-            // switch (gesture.type){
-            //    case "circle":
-            //    console.log("Circle Gesture");
-            //    break;
-               // case "keyTap":
-               // console.log("Key Tap Gesture");
-               // break;
-               // case "screenTap":
-               // console.log("Screen Tap Gesture");
-               // break;
-               // case "swipe":
-               // console.log("Swipe Gesture");
-               // break;
-            // }
-         });
+            });
+         }
       }
    };
 
@@ -263,14 +279,10 @@ function drawNewPlane(width, height) {
    scene.add(newPlane.plane);
 }
 
-function drawNewSphere(radius, width, height) {
-   newSphere = new Sphere(radius, width, height);
+function drawNewSphere(radius, width, height, positionX, positionY) {
+   newSphere = new Sphere(radius, width, height, positionX, positionY);
    scene.add(newSphere.sphere);
-}
-
-function render() {
-   requestAnimationFrame(render);
-   renderer.render(scene, camera);
+   console.log(scene.length, ' scene.length');
 }
 
 function concatData(id, data) {
@@ -278,4 +290,4 @@ function concatData(id, data) {
 }
 
 init();
-render();
+animate();
