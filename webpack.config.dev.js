@@ -5,7 +5,6 @@ module.exports = {
 	devtool: "source-map",
 	context: path.resolve(__dirname, "src"),
 	entry: {
-		vendor: "./vendor.js",
 		build: "./index.js"
 	},
 	output: {
