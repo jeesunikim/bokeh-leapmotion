@@ -3,13 +3,20 @@
 	<head>
 		<title>Art Show</title>
 		<style>
-			body {
+			body.previousScene {
+				background-image: none;
 				background: linear-gradient(to top left, #3F1344 10%, #4A1742 20%,  #522357 50%, #5539B2);
 				height: 100vh;
 				overflow: hidden;
 				margin: 0;
 				height: 100vh;
 				color: #ffffff;
+			}
+
+			body.defaultScene {
+				background-image: url('assets/img/default-lightbulb.jpg');
+				background-size: cover;
+				background-position: top; 
 			}
 
 			/* following styling is from Owlypixel: https://codepen.io/owlypixel/pen/bqBvRe */)
@@ -52,12 +59,12 @@
 		<div style="position: absolute; top: 0;" id="output"></div>
 
 		<canvas id="bokeh-canvas"></canvas>
-		<div class="wrapper">
+		<!-- <div class="wrapper">
 			<div class="colorizer1"></div>
 			<div class="colorizer2"></div>
 			<div class="colorizer3"></div>
 			<div class="colorizer4"></div>
-		</div>
+		</div> -->
 
 
 		<script src="assets/js/build.js"></script>

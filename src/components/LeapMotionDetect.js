@@ -1,7 +1,8 @@
 import * as Leap from 'leapjs';
 import * as LeapPlugin from 'leapjs-plugins';
-import { getRandom, ParseToNum, checkIfExists } from '../utils';
+import { getRandom, ParseToNum, checkIfExists, concatData } from '../utils';
 import Circle from './Circle';
+import Canvas from './Canvas';
 
 const 
    circle = {},
@@ -61,10 +62,6 @@ function animate() {
    requestAnimationFrame(animate);
 }
 
-function update() {
-
-}
-
 function drawCircleOnGesture(circle) {
   return new Promise((resolve, reject) => {
       circle.drawCircle(circle.options);
@@ -99,12 +96,33 @@ function addCircles(isValidPosition, newCircle) {
 }
 
 function displayFinger(frame) {
-   frame.pointables.forEach((pointable, index) => {
-      const circles = ( circle[index] || (circle[index] = new Circle()));
-      if(pointable.type == 1) {
-         circles.setTransform(pointable.screenPosition());
+   // console.log(frame.hands)
+   frame.hands.forEach((hand) => {
+      if(hand.type == "left") {
+         hand.pointables.forEach((pointable, index) => {
+            const circles = ( circle[index] || (circle[index] = new Circle()));
+             if(pointable) {
+               circles.setTransform(pointable.screenPosition());
+            }
+         });
+         const MinorityReport = new Canvas(canvas, context);
+         MinorityReport.rotateToChange(hand.roll());
       }
-   });
+      if(hand.type == "right") {
+         hand.pointables.forEach((pointable, index) => {
+            const circles = ( circle[index] || (circle[index] = new Circle()));
+             if(pointable.type == 1) {
+               circles.setTransform(pointable.screenPosition());
+            }
+         });
+      }
+   })
+   // frame.pointables.forEach((pointable, index) => {
+   //    const circles = ( circle[index] || (circle[index] = new Circle()));
+   //    if(pointable.type == 1) {
+   //       circles.setTransform(pointable.screenPosition());
+   //    }
+   // });
 }
 
 function detectGesture(frame) {
@@ -138,10 +156,5 @@ function detectGesture(frame) {
    }
 }
 
-function concatData(id, data) {
-   return id + ": " + data + "<br>";
-}
-
 init();
 animate();
-update();

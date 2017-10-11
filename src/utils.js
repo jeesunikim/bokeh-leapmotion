@@ -19,3 +19,15 @@ export var checkIfExists = function checkIfExists(id, arr) {
    });
    return isExist;
 }
+
+export var concatData = function concatData(id, data) {
+	return id + ": " + data + "<br>";	
+}
+
+export var addClass = function(el, className){
+    if (el.classList) {
+        el.classList.add(className);
+    }else {
+        el.className += ' ' + className;
+    }
+};
