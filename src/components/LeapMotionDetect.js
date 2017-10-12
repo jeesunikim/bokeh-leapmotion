@@ -62,7 +62,9 @@ function addCircles(isValidPosition, newCircle) {
          initialX: newCircle.x,
          initialY: newCircle.y,
          radius: newCircle.radius,
-         speed: .2 + Math.random() * 3,
+         angle: getRandom( 0, Math.PI * 2 ),
+         vel: getRandom( 0.1, 0.5 ),
+         tick: getRandom( 0, 10 ),
          id: newCircle.id
       });
 
@@ -113,9 +115,7 @@ function detectGesture(frame) {
    if(frame.valid && frame.gestures.length > 0){
       
       frame.gestures.forEach((gesture, index) => {
-         if(gesture.type === "circle" && gesture.state == "stop") {
-         // var touching = finger.touchZone == 'touching';
-
+         if(gesture.type === "circle" && gesture.state == "update") {
             gesture.pointableIds.forEach(function(pointableId){
                   let itsPointable = frame.pointable(pointableId);
                   if(itsPointable.type === 1) {
