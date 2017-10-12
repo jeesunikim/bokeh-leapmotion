@@ -12,7 +12,6 @@ export default class Canvas {
 	}
 
 	rotateToChange(rotation) {
-
 		let defaultScene = rotation < .8 && rotation > 0 ? true : false, // less than .5
 			nextScene = rotation < -.5,
 			previousScene = rotation > .8;

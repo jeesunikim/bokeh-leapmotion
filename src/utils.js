@@ -17,9 +17,9 @@ export var ParseToNum = function ParseToNum(str1, str2) {
 	return combined.toFixed(1);	
 }
 
-export var checkIfExists = function checkIfExists(id, arr) {
+export var checkIfExists = function checkIfExists(date, arr) {
    let isExist = arr.some((el) => {
-      return el.options.id === id;
+      return Math.abs(el.options.date - date) > 300;
    });
    return isExist;
 }
