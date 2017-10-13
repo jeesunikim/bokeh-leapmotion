@@ -12,8 +12,8 @@ export default class Canvas {
 	}
 
 	rotateToChange(rotation) {
-
-		let defaultScene = rotation < .8 && rotation > 0 ? true : false, // less than .5
+		let 
+			defaultScene = rotation < .8 && rotation > 0 ? true : false, // less than .5
 			nextScene = rotation < -.5,
 			previousScene = rotation > .8;
 
@@ -21,7 +21,7 @@ export default class Canvas {
 			this.changeToScene("defaultScene");	
 		}
 		if(nextScene){
-			this.changeToScene("nextScene")
+			this.changeToScene("nextScene")	
 		}
 		if(previousScene){
 			this.changeToScene("previousScene")

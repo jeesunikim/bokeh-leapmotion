@@ -3,55 +3,27 @@
 	<head>
 		<title>Art Show</title>
 		<style>
-			body.previousScene {
-				background-image: none;
-				background: linear-gradient(to top left, #3F1344 10%, #4A1742 20%,  #522357 50%, #5539B2);
+			body {
 				height: 100vh;
 				overflow: hidden;
 				margin: 0;
 				height: 100vh;
-				color: #ffffff;
+				
 			}
-
+			body.previousScene {
+				background-image: url('assets/img/default-lightbulb-02.jpg');
+				background-size: cover;
+				background-position: top; 
+			}
 			body.defaultScene {
 				background-image: url('assets/img/default-lightbulb.jpg');
 				background-size: cover;
 				background-position: top; 
 			}
-
-			/* following styling is from Owlypixel: https://codepen.io/owlypixel/pen/bqBvRe */)
-
-			.colorizer1, .colorizer2, .colorizer3, .colorizer4 {
-				position: absolute;
-				width: 300px;
-				height: 300px;
-				filter: blur(130px);
-			}
-
-			.colorizer1 {
-				border-radius: 50%;
-				background: linear-gradient(135deg, #A191AE, #dbdce0);
-			}
-			.colorizer2 {
-				top: 20%;
-				left: 70%;
-				background: #63568C;
-			}
-			.colorizer3 {
-				top: 80%;
-				left: -15%;
-				background: #2D0D34;
-				filter: blur(80px);
-				border-radius: 50%;
-			}
-			.colorizer4 {
-				top: 20%;
-				left: 35%;
-				width: 100px;
-				height: 100px;
-				background: #bbdebc;
-				filter: blur(80px);
-				border-radius: 50%;
+			body.nextScene {
+				background-image: url('assets/img/default-lightbulb-03.jpg');
+				background-size: cover;
+				background-position: top; 
 			}
 		</style>
 	</head>
@@ -59,14 +31,6 @@
 		<div style="position: absolute; top: 0;" id="output"></div>
 
 		<canvas id="bokeh-canvas"></canvas>
-		<!-- <div class="wrapper">
-			<div class="colorizer1"></div>
-			<div class="colorizer2"></div>
-			<div class="colorizer3"></div>
-			<div class="colorizer4"></div>
-		</div> -->
-
-
 		<script src="assets/js/build.js"></script>
 	</body>
 </html>

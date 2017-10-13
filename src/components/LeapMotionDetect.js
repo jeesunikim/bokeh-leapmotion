@@ -14,7 +14,8 @@ let
 
 let 
    controller,
-   screenPosition;
+   screenPosition,
+   fingerPosition;
 
 function init() {
    canvas = document.getElementById('bokeh-canvas'),  
@@ -30,7 +31,8 @@ function init() {
 }
 
 function onResize(){
-   
+   context.canvas.width = window.innerWidth;
+   context.canvas.height = window.innerHeight;
 }
 
 function initLeap() {
@@ -45,46 +47,36 @@ function initLeap() {
 
 function animate() {
    // context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-   for (let i = 0; i < circles.length; i++) {
 
-      // let centerX = circles[i].options.x;
-      // let centerY = circles[i].options.y;
-      // let radius = circles[i].options.radius;
-
-      drawCircleOnGesture(circles[i])
-      .then(() => {
-         // setTimeout(() => {
-         //    circles[i].update(circles[i]);
-         // }, 5000)
-      })
-   }
+   circles.forEach((circle) => {
+      circle.drawCircle(circle.options);
+   })
 
    requestAnimationFrame(animate);
 }
 
-function drawCircleOnGesture(circle) {
-  return new Promise((resolve, reject) => {
-      circle.drawCircle(circle.options);
-      resolve();
-  })
-}
-
 function addCircles(isValidPosition, newCircle) {
    if(isValidPosition) {
-      console.log(circles, ' circles');
 
-      let circle = new Circle({
+      let circle = new Circle(canvas, context, {
          x: newCircle.x,
          y: newCircle.y,
+         initialX: newCircle.x,
+         initialY: newCircle.y,
          radius: newCircle.radius,
-         speed: .2 + Math.random() * 3,
-         id: newCircle.id
+         velX: getRandom(-8, 8),
+         velY: getRandom(-8, 8),
+         tick: getRandom( 0, 10 ),
+         date: Date.now()
       });
 
+      if(circles.length > 50) {
+         circles.splice(0, 20);
+      }
+
       if(circles.length > 0){
-         let isExist = checkIfExists(circle.options.id, circles);
-         console.log(isExist, ' isExist')   
-         if(!isExist) {
+         let isExist = checkIfExists(circle.options.date, circles);
+         if(isExist) {
             circles.push(circle);
          }else{
             return;
@@ -96,33 +88,57 @@ function addCircles(isValidPosition, newCircle) {
 }
 
 function displayFinger(frame) {
-   // console.log(frame.hands)
    frame.hands.forEach((hand) => {
       if(hand.type == "left") {
          hand.pointables.forEach((pointable, index) => {
-            const circles = ( circle[index] || (circle[index] = new Circle()));
+            const fingerCircles = ( circle[index] || (circle[index] = new Circle(canvas, context)));
              if(pointable) {
-               circles.setTransform(pointable.screenPosition());
+               fingerCircles.setTransform(pointable.screenPosition());
             }
          });
          const MinorityReport = new Canvas(canvas, context);
-         MinorityReport.rotateToChange(hand.roll());
+         setTimeout(() => {
+            MinorityReport.rotateToChange(hand.roll());
+         }, 300);
       }
       if(hand.type == "right") {
          hand.pointables.forEach((pointable, index) => {
-            const circles = ( circle[index] || (circle[index] = new Circle()));
+            const fingerCircles = ( circle[index] || (circle[index] = new Circle(canvas, context)));
              if(pointable.type == 1) {
-               circles.setTransform(pointable.screenPosition());
+               fingerCircles.setTransform(pointable.screenPosition());
+               fingerPosition = pointable.screenPosition();
+
+               if(circles) {
+                  circles.forEach((circle) => {
+                     let fingerX = fingerPosition[0];
+                     let fingerY = fingerPosition[1];
+                     let fingerRadius = 5;
+
+                     let dx = circle.options.x - fingerX;
+                     let dy = circle.options.y - fingerY;
+                     let distance = Math.sqrt(dx * dx + dy * dy);
+
+                     if (distance < circle.options.radius + fingerRadius) {
+                        if(circle.options.x - fingerX > 0) {
+                           circle.options.x += 10;
+                        }
+                        if(circle.options.x - fingerX < 0) {
+                           circle.options.x -= 10;
+                        }
+                        if(circle.options.y - fingerY > 0) {
+                           circle.options.y += 10;
+                        }
+                        if(circle.options.y - fingerY < 0) {
+                           circle.options.y -= 10;
+                        }
+                     }
+                     circle.moveCircle(circle.options);
+                  })
+               }
             }
          });
       }
-   })
-   // frame.pointables.forEach((pointable, index) => {
-   //    const circles = ( circle[index] || (circle[index] = new Circle()));
-   //    if(pointable.type == 1) {
-   //       circles.setTransform(pointable.screenPosition());
-   //    }
-   // });
+   });
 }
 
 function detectGesture(frame) {
@@ -135,21 +151,16 @@ function detectGesture(frame) {
       
       frame.gestures.forEach((gesture, index) => {
          if(gesture.type === "circle" && gesture.state == "stop") {
-// var touching = finger.touchZone == 'touching';
-
             gesture.pointableIds.forEach(function(pointableId){
                   let itsPointable = frame.pointable(pointableId);
                   if(itsPointable.type === 1) {
                      
                      itsScreenPosition = itsPointable.screenPosition();
-
                      newCircle.x = ParseToNum(itsScreenPosition[0], gesture.radius);
                      newCircle.y = ParseToNum(itsScreenPosition[1],gesture.radius);
                      newCircle.radius = ParseToNum(gesture.radius);
-                     newCircle.id = gesture.pointableIds[0];
                   }
             });
-
             addCircles(itsScreenPosition, newCircle);
          }
       });

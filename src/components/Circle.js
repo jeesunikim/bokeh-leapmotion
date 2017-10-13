@@ -1,77 +1,101 @@
-import { ParseToNum, getRandom } from '../utils';
+import { ParseToNum, getRandom, getFloatRandom, hsla, hasClass } from '../utils';
 
-export default class Circle {
-	constructor(options) {
-		this.canvas = document.getElementById('bokeh-canvas');
-		this.context = this.canvas.getContext("2d");
-		
-		this.opacity = .25 + Math.random() * .5;
-		this.counter = 0;
-
-		let signHelper = Math.floor(Math.random() * 2);
-
-
-		this.colorrange = [0, 120, 240],
-		this.hue = this.colorrange[getRandom(0, this.colorrange.length - 1)],
-		this.sat = getRandom(50, 100);
-
-		if (signHelper == 1) {
-			this.sign = -1;
-		} else {
-			this.sign = 1;
-		}
-
-		// options is from Leap Motion Detection
+const body = document.body;
+ export default class Circle {
+	constructor(canvas, context, options) {
+		this.canvas = canvas;
+		this.ctx = context;
 		this.options = options;
-
-		this.drawCircle = this.drawCircle.bind(this);
-		// this.update = this.update.bind(this);
 	}
 
 	setTransform(position) {
-		this.context.beginPath();
-		this.context.arc(position[0], position[1], 10, 0, Math.PI*2);
-		this.context.fill();
-		this.context.closePath();
+		let {ctx} = this;
+		ctx.beginPath();
+		ctx.arc(position[0], position[1], 5, 0, Math.PI*2);
+		ctx.shadowBlur = 15;
+		ctx.shadowColor = '#fff';
+		ctx.fillStyle = hsla( 0, 0, 100, 1 );
+		ctx.fill();
+		ctx.closePath();
 	}
+
+	moveCircle() {
+		let {ctx} = this;
+		let {x, y, initialX, initialY, radius, velX, velY} = this.options;
+		this.options.x = parseInt(this.options.x);
+		this.options.y = parseInt(this.options.y);
+
+		this.options.velX *= .98;
+		this.options.velY *= .98;
+
+		this.options.x += this.options.velX;
+		this.options.y += this.options.velY;
+
+		ctx.beginPath();
+		ctx.arc(
+			this.options.x,
+			this.options.y,
+			radius, 
+			0, 
+			Math.PI*2,
+			false
+		);
+	}	
 
 	drawCircle() {
 
-		this.counter += this.sign * this.options.speed;
+		let {ctx} = this;
+		let {x, y, initialX, initialY, radius, velX, velY} = this.options;
 
-		// console.log(this.hue, this.sat, ' this.hue, sat')
-		this.context.beginPath();
-		this.context.arc(
-			// this.options.x,
-			// this.options.y,
-			parseFloat(this.options.x) + parseFloat(Math.cos(this.counter / 100)) * parseFloat(this.options.radius), 
-			parseFloat(this.options.y) + parseFloat(Math.sin(this.counter / 100)) * parseFloat(this.options.radius),
-			this.options.radius, 
+		this.options.x = parseInt(this.options.x);
+		this.options.y = parseInt(this.options.y);
+
+		this.options.velX *= .98;
+		this.options.velY *= .98;
+
+		this.options.x += this.options.velX;
+		this.options.y += this.options.velY;
+
+		ctx.beginPath();
+		ctx.arc(
+			this.options.x,
+			this.options.y,
+			radius, 
 			0, 
-			Math.PI*2
+			Math.PI*2,
+			false
 		);
-		this.context.globalCompositeOperation = 'lighter';
-		this.context.fillStyle = "hsla(" + this.hue + ", " + this.sat + "%, 88%" + ", " + this.opacity + ")";
-		this.context.fill();
-		this.context.closePath();
 
-	}
-
-	// update(currentCircle) {
+		// all about coloring below
+		ctx.globalCompositeOperation = 'lighter';
 		
-	// 	this.counter += this.sign * this.options.speed;
+		if(hasClass(body, "previousScene")) {
+			ctx.shadowBlur = 15;
+			ctx.shadowColor = '#fff';
+			ctx.fillStyle = hsla( 0, 100, 50, 0.075 + Math.cos( this.options.tick * 0.02 ) * 0.05 );
+			ctx.fill();
+		}
 
-	// 	this.context.save();
-	// 	currentCircle.beginPath();
-	// 	currentCircle.arc(
-	// 		parseFloat(this.options.x) + parseFloat(Math.cos(this.counter / 100)) * parseFloat(this.options.radius), 
-	// 		parseFloat(this.options.y) + parseFloat(Math.sin(this.counter / 100)) * parseFloat(this.options.radius),
-	// 		this.options.radius,
-	// 		0,
-	// 		Math.PI*2
-	// 	)
-	// 	currentCircle.fill();
-	// 	currentCircle.fillStyle = 'rgba(185, 211, 238,' + this.opacity + ')';
-	// 	currentCircle.closePath();
-	// }
+		if(hasClass(body, "defaultScene")) {
+			let hue = getRandom(0, 50);
+			ctx.shadowBlur = 15;
+			ctx.shadowColor = '#fff';
+			ctx.fillStyle = hsla( hue, 100, 100, 0.075 + Math.cos( this.options.tick  ) * 0.25 );
+			ctx.strokeStyle = 'rgba(255,' + Math.floor(255 - 5) + ',' + Math.floor(255 - 5) + ',' + '0.3', ')';
+			ctx.lineWidth = 3;
+			ctx.stroke();	
+			ctx.fill();
+		}
+
+		if(hasClass(body, "nextScene")) {
+			let shadow = getFloatRandom(5, 20);
+
+			ctx.shadowBlur = shadow;
+			ctx.shadowColor = '#fff';
+			ctx.fillStyle = hsla( 30, 100, 50, 0.075 + (this.options.tick * 0.25));
+			ctx.fill();
+		}
+
+		ctx.closePath();
+	}
 }
