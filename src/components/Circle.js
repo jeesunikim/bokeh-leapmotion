@@ -6,7 +6,6 @@ const body = document.body;
 		this.canvas = canvas;
 		this.ctx = context;
 		this.options = options;
-		this.drawCircle = this.drawCircle.bind(this);
 	}
 
 	setTransform(position) {
@@ -20,36 +19,39 @@ const body = document.body;
 		ctx.closePath();
 	}
 
-	drawCircle() {
-
+	moveCircle() {
 		let {ctx} = this;
-		let {x, y, initialX, initialY, radius, velX, velY, angle} = this.options;
-		// console.log(velX, ' velX');
-
+		let {x, y, initialX, initialY, radius, velX, velY} = this.options;
 		this.options.x = parseInt(this.options.x);
 		this.options.y = parseInt(this.options.y);
-
-		// all about reversing the coordinate if it hits the edges of canvas
-		if(this.options.x + this.options.radius > this.canvas.width || this.options.x - this.options.radius < 0){
-			console.log("X and Radius are > Canvas' left side of width", this.options.velX);
-			// this.options.velX *= -1;
-		}
-
-		if(this.options.y - this.options.radius < 0 || this.options.y + this.options.radius > this.canvas.height){
-			console.log("X and Radius are > Canvas' width", this.options.velY);
-			// this.options.velY *= -1;
-		}
-
-		// this.options.x += Math.cos( this.options.angle ) * this.options.velX * .08;
-		// this.options.y += Math.sin( this.options.angle ) * this.options.velY * .08;
-		// console.log(this.options.velX, ' this.options.velX');
-		// console.log(this.options.velY, ' this.options.velY');
 
 		this.options.velX *= .98;
 		this.options.velY *= .98;
 
-		// let angleX = Math.cos( this.options.angle );
-		// let angleY = Math.sin( this.options.angle );
+		this.options.x += this.options.velX;
+		this.options.y += this.options.velY;
+
+		ctx.beginPath();
+		ctx.arc(
+			this.options.x,
+			this.options.y,
+			radius, 
+			0, 
+			Math.PI*2,
+			false
+		);
+	}	
+
+	drawCircle() {
+
+		let {ctx} = this;
+		let {x, y, initialX, initialY, radius, velX, velY} = this.options;
+
+		this.options.x = parseInt(this.options.x);
+		this.options.y = parseInt(this.options.y);
+
+		this.options.velX *= .98;
+		this.options.velY *= .98;
 
 		this.options.x += this.options.velX;
 		this.options.y += this.options.velY;

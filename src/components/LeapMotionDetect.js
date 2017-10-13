@@ -14,7 +14,8 @@ let
 
 let 
    controller,
-   screenPosition;
+   screenPosition,
+   fingerPosition;
 
 function init() {
    canvas = document.getElementById('bokeh-canvas'),  
@@ -30,7 +31,8 @@ function init() {
 }
 
 function onResize(){
-   
+   context.canvas.width = window.innerWidth;
+   context.canvas.height = window.innerHeight;
 }
 
 function initLeap() {
@@ -45,16 +47,16 @@ function initLeap() {
 
 function animate() {
    // context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+
    circles.forEach((circle) => {
       circle.drawCircle(circle.options);
    })
-   
+
    requestAnimationFrame(animate);
 }
 
 function addCircles(isValidPosition, newCircle) {
    if(isValidPosition) {
-      console.log(circles, ' circles');
 
       let circle = new Circle(canvas, context, {
          x: newCircle.x,
@@ -62,7 +64,6 @@ function addCircles(isValidPosition, newCircle) {
          initialX: newCircle.x,
          initialY: newCircle.y,
          radius: newCircle.radius,
-         angle: getRandom( 0, Math.PI * 2 ),
          velX: getRandom(-8, 8),
          velY: getRandom(-8, 8),
          tick: getRandom( 0, 10 ),
@@ -74,7 +75,6 @@ function addCircles(isValidPosition, newCircle) {
       }
 
       if(circles.length > 0){
-         console.log(circle.options, ' circle.options')
          let isExist = checkIfExists(circle.options.date, circles);
          if(isExist) {
             circles.push(circle);
@@ -91,19 +91,50 @@ function displayFinger(frame) {
    frame.hands.forEach((hand) => {
       if(hand.type == "left") {
          hand.pointables.forEach((pointable, index) => {
-            const circles = ( circle[index] || (circle[index] = new Circle(canvas, context)));
+            const fingerCircles = ( circle[index] || (circle[index] = new Circle(canvas, context)));
              if(pointable) {
-               circles.setTransform(pointable.screenPosition());
+               fingerCircles.setTransform(pointable.screenPosition());
             }
          });
          const MinorityReport = new Canvas(canvas, context);
-         MinorityReport.rotateToChange(hand.roll());
+         setTimeout(() => {
+            MinorityReport.rotateToChange(hand.roll());
+         }, 300);
       }
       if(hand.type == "right") {
          hand.pointables.forEach((pointable, index) => {
-            const circles = ( circle[index] || (circle[index] = new Circle(canvas, context)));
+            const fingerCircles = ( circle[index] || (circle[index] = new Circle(canvas, context)));
              if(pointable.type == 1) {
-               circles.setTransform(pointable.screenPosition());
+               fingerCircles.setTransform(pointable.screenPosition());
+               fingerPosition = pointable.screenPosition();
+
+               if(circles) {
+                  circles.forEach((circle) => {
+                     let fingerX = fingerPosition[0];
+                     let fingerY = fingerPosition[1];
+                     let fingerRadius = 5;
+
+                     let dx = circle.options.x - fingerX;
+                     let dy = circle.options.y - fingerY;
+                     let distance = Math.sqrt(dx * dx + dy * dy);
+
+                     if (distance < circle.options.radius + fingerRadius) {
+                        if(circle.options.x - fingerX > 0) {
+                           circle.options.x += 10;
+                        }
+                        if(circle.options.x - fingerX < 0) {
+                           circle.options.x -= 10;
+                        }
+                        if(circle.options.y - fingerY > 0) {
+                           circle.options.y += 10;
+                        }
+                        if(circle.options.y - fingerY < 0) {
+                           circle.options.y -= 10;
+                        }
+                     }
+                     circle.moveCircle(circle.options);
+                  })
+               }
             }
          });
       }
@@ -125,15 +156,11 @@ function detectGesture(frame) {
                   if(itsPointable.type === 1) {
                      
                      itsScreenPosition = itsPointable.screenPosition();
-
                      newCircle.x = ParseToNum(itsScreenPosition[0], gesture.radius);
                      newCircle.y = ParseToNum(itsScreenPosition[1],gesture.radius);
                      newCircle.radius = ParseToNum(gesture.radius);
-                     console.log(gesture.pointableIds, ' gesture.pointableIds')
-                     newCircle.id = gesture.pointableIds[0];
                   }
             });
-
             addCircles(itsScreenPosition, newCircle);
          }
       });
