@@ -1,5 +1,4 @@
-import { getRandom, hsla } from "../utils";
-import { hasClass, addClass } from "../utils";
+import { getRandom, hsla, hasClass, addClass } from "../utils";
 
 const body = document.body;
 
