@@ -2,35 +2,31 @@
 	<html lang="en">
 	<head>
 		<title>Art Show</title>
+		<meta charset="utf-8"/>
 		<style>
 			body {
-				height: 100vh;
+				background: #000;
 				overflow: hidden;
 				margin: 0;
-				height: 100vh;
-				
 			}
-			body.previousScene {
-				background-image: url('assets/img/default-lightbulb-02.jpg');
-				background-size: cover;
-				background-position: top; 
+
+			.black-bg {
+				background-color: hsl(0, 0%, 0%);
 			}
-			body.defaultScene {
-				background-image: url('assets/img/default-lightbulb.jpg');
-				background-size: cover;
-				background-position: top; 
-			}
-			body.nextScene {
-				background-image: url('assets/img/default-lightbulb-03.jpg');
-				background-size: cover;
-				background-position: top; 
+
+			#bokeh-canvas {
+				position: absolute;
+				height: 100%;
+				width: 100%;
+				top: 0;
+				left: 0;
 			}
 		</style>
 	</head>
 	<body>
-		<div style="position: absolute; top: 0;" id="output"></div>
-
+		<canvas id="bg-canvas"></canvas>
 		<canvas id="bokeh-canvas"></canvas>
+
 		<script src="assets/js/build.js"></script>
 	</body>
 </html>
