@@ -1,7 +1,9 @@
-import { addClass } from './utils';
-import * as LeapMotionDetect from "./components/LeapMotionDetect"; 
+import LeapMotionDetect from "./components/LeapMotionDetect";
 
 document.addEventListener("DOMContentLoaded", () => {
-	addClass(document.body, "defaultScene");
+	const Bokeh = new LeapMotionDetect();
+
+	Bokeh.init();
+
 	console.log("Bokeh DOM has been loaded");
 });
