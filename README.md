@@ -1,5 +1,7 @@
 # Bokeh Leap Motion
 
+![alt text](https://github.com/jeesunikim/bokeh-leapmotion/blob/master/bokeh-leapmotion.gif "Bokeh Leap Motion GIF")
+
 This project was for Firstborn's 3rd Annual Pop-Up Art Show. I created this project to learn the basic of Canvas API and motion. This is my first step into Creative Coding :wink:. I am using [Leap Motion](https://www.leapmotion.com/) because I love its "Minority Report-style Gesture Controller".
 
 ## Getting Started
@@ -16,7 +18,7 @@ To Compile
 npm run start
 ```
 
-To Run webpack-dev-server
+To Run `webpack-dev-server`
 
 ```
 npm run start:dev
