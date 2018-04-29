@@ -4,6 +4,10 @@
 
 This project was for Firstborn's 3rd Annual Pop-Up Art Show. I created this project to learn the basic of Canvas API and motion. This is my first step into Creative Coding :wink:. I am using [Leap Motion](https://www.leapmotion.com/) because I love its "Minority Report-style Gesture Controller".
 
+## How To Draw
+
+Once the project runs on `http://localhost:8080/`, change the scene by using your left hand (you will see your left hand's fingers' dots on the screen) and draw a bokeh using your right index finger.
+
 ## Getting Started
 
 ### Installing
